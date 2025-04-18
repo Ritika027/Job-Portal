@@ -28,6 +28,7 @@ const HeroSection = () => {
       icon: <FaUserPlus />,
     },
   ];
+    
   return (
     <>
       <div className="heroSection">

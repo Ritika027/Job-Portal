@@ -1,8 +1,9 @@
 import axios from "axios";
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 import { Context } from "../../main";
+
 const Application = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -12,18 +13,31 @@ const Application = () => {
   const [resume, setResume] = useState(null);
 
   const { isAuthorized, user } = useContext(Context);
-
   const navigateTo = useNavigate();
+  const { id } = useParams();
 
-  // Function to handle file input changes
+  useEffect(() => {
+    if (!isAuthorized || (user && user.role === "Employer")) {
+      navigateTo("/"); // Redirect to home if not authorized or user is an Employer
+    }
+  }, [isAuthorized, user, navigateTo]);
+
+  // Handle file input change
   const handleFileChange = (event) => {
-    const resume = event.target.files[0];
-    setResume(resume);
+    const selectedFile = event.target.files[0];
+    if (!selectedFile) return;
+    setResume(selectedFile);
   };
 
-  const { id } = useParams();
   const handleApplication = async (e) => {
     e.preventDefault();
+
+    // Validate the form
+    if (!resume) {
+      toast.error("Please upload your resume.");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("name", name);
     formData.append("email", email);
@@ -35,31 +49,33 @@ const Application = () => {
 
     try {
       const { data } = await axios.post(
-        "http://localhost:4000/api/v1/application/post",
+        "http://localhost:4000/api/v1/application/post", // Backend endpoint
         formData,
         {
-          withCredentials: true,
+          withCredentials: true, // Send cookies if any
           headers: {
-            "Content-Type": "multipart/form-data",
+            "Content-Type": "multipart/form-data", // Make sure to set the content type for file upload
           },
         }
       );
+
+      // Clear the form after submission
       setName("");
       setEmail("");
       setCoverLetter("");
       setPhone("");
       setAddress("");
-      setResume("");
+      setResume(null);
+
+      // Show success message
       toast.success(data.message);
-      navigateTo("/job/getall");
+      navigateTo("/job/getall"); // Navigate to another page after success
     } catch (error) {
-      toast.error(error.response.data.message);
+      const errorMessage =
+        error?.response?.data?.message || "Failed to submit application.";
+      toast.error(errorMessage); // Show error message if request fails
     }
   };
-
-  if (!isAuthorized || (user && user.role === "Employer")) {
-    navigateTo("/");
-  }
 
   return (
     <section className="application">
@@ -71,41 +87,46 @@ const Application = () => {
             placeholder="Your Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            required
           />
           <input
             type="email"
             placeholder="Your Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
           />
           <input
-            type="number"
+            type="tel"
             placeholder="Your Phone Number"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            required
           />
           <input
             type="text"
             placeholder="Your Address"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
+            required
           />
           <textarea
-            placeholder="CoverLetter..."
+            placeholder="Cover Letter..."
             value={coverLetter}
             onChange={(e) => setCoverLetter(e.target.value)}
+            required
           />
           <div>
             <label
               style={{ textAlign: "start", display: "block", fontSize: "20px" }}
             >
-              Select Resume
+              Select Resume (Any format allowed)
             </label>
             <input
               type="file"
-              accept=".pdf, .jpg, .png"
               onChange={handleFileChange}
               style={{ width: "100%" }}
+              required
             />
           </div>
           <button type="submit">Send Application</button>
